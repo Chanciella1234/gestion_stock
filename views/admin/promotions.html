@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StockPro — Promotions</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="/js/theme.js"></script>
+  <style>
+    .promo-item { background: var(--bg-700); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; }
+    .promo-item .info { flex: 1; }
+    .promo-item .info h4 { font-size: 15px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+    .promo-item .info .meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 12px; flex-wrap: wrap; }
+    .promo-item .actions { display: flex; gap: 6px; }
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-state i { font-size: 36px; margin-bottom: 12px; }
+    .promo-code { font-family: monospace; background: var(--bg-600); padding: 2px 8px; border-radius: 4px; font-size: 13px; }
+  </style>
+</head>
+<body data-page="promotions">
+  <div class="page-wrapper">
+    <div id="adminSidebar"></div>
+    <div class="main-content">
+      <div class="flex items-center justify-between mb-2">
+        <h1><i class="fas fa-tag"></i> Promotions</h1>
+        <button class="btn btn-primary btn-sm" onclick="ouvrirModalCreation()"><i class="fas fa-plus"></i> Nouvelle promotion</button>
+      </div>
+
+      <div id="promosContainer">
+        <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Chargement...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Création/Modification -->
+  <div class="modal-overlay" id="modalPromo" style="display:none">
+    <div class="modal" style="max-width:550px">
+      <div class="modal-header">
+        <span class="modal-title" id="modalPromoTitle">Nouvelle promotion</span>
+        <button class="modal-close" onclick="fermerModal('modalPromo')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="promoId">
+        <div class="form-group">
+          <label class="form-label">Code promo *</label>
+          <input type="text" class="form-control" id="promoCode" placeholder="Ex: SUMMER20" style="text-transform:uppercase">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Type *</label>
+            <select class="form-control" id="promoType">
+              <option value="pourcentage">Pourcentage (%)</option>
+              <option value="montant_fixe">Montant fixe (FBU)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valeur *</label>
+            <input type="number" class="form-control" id="promoValeur" min="1" placeholder="Ex: 10">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Date début *</label>
+            <input type="date" class="form-control" id="promoDateDebut">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date fin *</label>
+            <input type="date" class="form-control" id="promoDateFin">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <input type="text" class="form-control" id="promoDescription" placeholder="Ex: Soldes d'été">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="fermerModal('modalPromo')">Annuler</button>
+        <button class="btn btn-primary" id="btnSavePromo"><i class="fas fa-save"></i> Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/navbar.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      verifierAuth();
+      chargerPromotions();
+      document.getElementById('btnSavePromo').addEventListener('click', sauvegarderPromo);
+    });
+
+    function verifierAuth() {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/views/auth/login.html'; return; }
+      try {
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (!user || user.role !== 'admin') window.location.href = '/views/produits/catalogue.html';
+      } catch (e) { window.location.href = '/views/auth/login.html'; }
+    }
+
+    function ouvrirModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function fermerModal(id) { document.getElementById(id).style.display = 'none'; }
+    function getToken() { return localStorage.getItem('token'); }
+
+    let promosCache = [];
+
+    async function chargerPromotions() {
+      const token = getToken();
+      const container = document.getElementById('promosContainer');
+      try {
+        const res = await fetch(API + '/promotions', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) {
+          promosCache = data.data;
+          afficherPromotions();
+        }
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Erreur de chargement</h3></div>';
+      }
+    }
+
+    function afficherPromotions() {
+      const container = document.getElementById('promosContainer');
+      if (promosCache.length === 0) {
+        container.innerHTML = '<div class="empty-state"><i class="fas fa-tag"></i><h3>Aucune promotion</h3><p>Créez votre première promotion !</p></div>';
+        return;
+      }
+
+      container.innerHTML = promosCache.map(p => {
+        const maintenant = new Date();
+        const debut = new Date(p.date_debut);
+        const fin = new Date(p.date_fin);
+        let statutTexte = 'Inactif';
+        let statutClass = 'badge-stock-out';
+        if (p.actif && maintenant >= debut && maintenant <= fin) {
+          statutTexte = 'Active';
+          statutClass = 'badge-stock-ok';
+        } else if (maintenant > fin) {
+          statutTexte = 'Expirée';
+          statutClass = 'badge-stock-low';
+        }
+        const valeurTexte = p.type === 'pourcentage' ? p.valeur + '%' : p.valeur + 'FBU';
+        const dateDebut = debut.toLocaleDateString('fr-FR');
+        const dateFin = fin.toLocaleDateString('fr-FR');
+        return `
+          <div class="promo-item">
+            <div class="info">
+              <h4><span class="promo-code">${p.code}</span> <span class="badge ${statutClass}">${statutTexte}</span></h4>
+              <div class="meta">
+                <span><i class="fas fa-percent"></i> ${valeurTexte} (${p.type === 'pourcentage' ? 'Pourcentage' : 'Montant fixe'})</span>
+                <span><i class="fas fa-calendar"></i> ${dateDebut} — ${dateFin}</span>
+                ${p.description ? '<span><i class="fas fa-info-circle"></i> ' + p.description + '</span>' : ''}
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary btn-sm" onclick="modifierPromo('${p._id}')"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="supprimerPromo('${p._id}')"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function ouvrirModalCreation() {
+      document.getElementById('modalPromoTitle').textContent = 'Nouvelle promotion';
+      document.getElementById('promoId').value = '';
+      document.getElementById('promoCode').value = '';
+      document.getElementById('promoType').value = 'pourcentage';
+      document.getElementById('promoValeur').value = '';
+      document.getElementById('promoDateDebut').value = '';
+      document.getElementById('promoDateFin').value = '';
+      document.getElementById('promoDescription').value = '';
+      ouvrirModal('modalPromo');
+    }
+
+    function modifierPromo(id) {
+      const promo = promosCache.find(p => p._id === id);
+      if (!promo) return;
+      document.getElementById('modalPromoTitle').textContent = 'Modifier la promotion';
+      document.getElementById('promoId').value = promo._id;
+      document.getElementById('promoCode').value = promo.code;
+      document.getElementById('promoType').value = promo.type;
+      document.getElementById('promoValeur').value = promo.valeur;
+      document.getElementById('promoDateDebut').value = promo.date_debut ? promo.date_debut.split('T')[0] : '';
+      document.getElementById('promoDateFin').value = promo.date_fin ? promo.date_fin.split('T')[0] : '';
+      document.getElementById('promoDescription').value = promo.description || '';
+      ouvrirModal('modalPromo');
+    }
+
+    async function sauvegarderPromo() {
+      const id = document.getElementById('promoId').value;
+      const code = document.getElementById('promoCode').value.trim().toUpperCase();
+      const type = document.getElementById('promoType').value;
+      const valeur = parseFloat(document.getElementById('promoValeur').value);
+      const date_debut = document.getElementById('promoDateDebut').value;
+      const date_fin = document.getElementById('promoDateFin').value;
+      const description = document.getElementById('promoDescription').value.trim();
+
+      if (!code || !valeur || !date_debut || !date_fin) {
+        alert('Veuillez remplir tous les champs obligatoires.');
+        return;
+      }
+
+      const body = { code, type, valeur, date_debut, date_fin, description };
+      const token = getToken();
+      const btn = document.getElementById('btnSavePromo');
+      btn.disabled = true;
+
+      try {
+        const url = id ? API + '/promotions/' + id : API + '/promotions';
+        const method = id ? 'PUT' : 'POST';
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) {
+          fermerModal('modalPromo');
+          chargerPromotions();
+        } else {
+          alert(data.message);
+        }
+      } catch (e) {
+        alert('Erreur lors de la sauvegarde.');
+      }
+      btn.disabled = false;
+    }
+
+    async function supprimerPromo(id) {
+      if (!await confirmAsync('Supprimer cette promotion ?')) return;
+      const token = getToken();
+      try {
+        const res = await fetch(API + '/promotions/' + id, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success) chargerPromotions();
+      } catch (e) {}
+    }
+  </script>
+</body>
+</html>

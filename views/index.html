@@ -202,7 +202,7 @@
     async function chargerProduits() {
       const container = document.getElementById('homeProducts');
       try {
-        const res = await fetch(API + '/produits?limit=4&actif=true');
+        const res = await fetch(API + '/produits?limit=8');
         const data = await res.json();
         if (data.success && data.data.length > 0) {
           container.innerHTML = data.data.map(p => {

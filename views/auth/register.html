@@ -118,7 +118,9 @@
             const body = {
               nom: document.getElementById('nom').value,
               email: document.getElementById('email').value,
-              mot_de_passe: password
+              mot_de_passe: password,
+              telephone: document.getElementById('telephone') ? document.getElementById('telephone').value : '',
+              adresse: document.getElementById('adresse') ? document.getElementById('adresse').value : ''
             };
             const res = await fetch(API + '/auth/register', {
               method: 'POST',

@@ -27,6 +27,18 @@ const utilisateurSchema = new mongoose.Schema({
     enum: ['client', 'admin'],
     default: 'client'
   },
+  telephone: {
+    type: String,
+    trim: true
+  },
+  adresse: {
+    type: String,
+    trim: true
+  },
+  actif: {
+    type: Boolean,
+    default: true
+  },
   date_inscription: {
     type: Date,
     default: Date.now

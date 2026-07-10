@@ -41,6 +41,10 @@ function initialiserNavbar() {
     } else {
       chargerBadgePanier();
     }
+
+    const navNotif = document.getElementById('navNotif');
+    if (navNotif) navNotif.style.display = 'block';
+    if (typeof chargerNotifications === 'function') chargerNotifications();
   } else {
     if (authLinks) authLinks.style.display = 'flex';
     if (userMenu) userMenu.style.display = 'none';

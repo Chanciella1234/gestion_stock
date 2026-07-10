@@ -1,4 +1,5 @@
 const Categorie = require('../models/Categorie');
+const Produit = require('../models/Produit');
 const { success, error } = require('../utils/apiResponse');
 
 exports.liste = async (req, res, next) => {
@@ -54,10 +55,17 @@ exports.modifier = async (req, res, next) => {
 
 exports.supprimer = async (req, res, next) => {
   try {
-    const categorie = await Categorie.findByIdAndDelete(req.params.id);
+    const categorie = await Categorie.findById(req.params.id);
     if (!categorie) {
       return error(res, 'Catégorie non trouvée.', 404);
     }
+
+    const nbProduits = await Produit.countDocuments({ categorie: req.params.id });
+    if (nbProduits > 0) {
+      return error(res, `Impossible de supprimer : ${nbProduits} produit(s) lié(s) à cette catégorie.`, 400);
+    }
+
+    await categorie.deleteOne();
     success(res, null, 'Catégorie supprimée');
   } catch (err) {
     next(err);

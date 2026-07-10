@@ -14,7 +14,10 @@ exports.stats = async (req, res, next) => {
       totalProduits,
       alertesActives,
       totalClients,
-      produitsFaibleStock
+      produitsFaibleStock,
+      commandesParJour,
+      topProduits,
+      dernieresCommandes
     ] = await Promise.all([
       Commande.countDocuments(),
       Commande.aggregate([
@@ -31,7 +34,32 @@ exports.stats = async (req, res, next) => {
       Produit.countDocuments(),
       Alerte.countDocuments({ resolu: false }),
       Utilisateur.countDocuments({ role: 'client' }),
-      Produit.find({ alerte_active: true }).select('nom stock seuil_alerte').sort('stock')
+      Produit.find({ alerte_active: true }).select('nom stock seuil_alerte').sort('stock'),
+      Commande.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 },
+            total: { $sum: '$montant_total' }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]),
+      Commande.aggregate([
+        { $unwind: '$lignes' },
+        { $group: { _id: '$lignes.nom_produit', totalVendu: { $sum: '$lignes.quantite' } } },
+        { $sort: { totalVendu: -1 } },
+        { $limit: 5 }
+      ]),
+      Commande.find()
+        .populate('utilisateur', 'nom email')
+        .sort('-createdAt')
+        .limit(5)
     ]);
 
     success(res, {
@@ -49,7 +77,10 @@ exports.stats = async (req, res, next) => {
         alerteActive: alertesActives,
         produitsFaibleStock
       },
-      clients: totalClients
+      clients: totalClients,
+      commandesParJour,
+      topProduits,
+      dernieresCommandes
     });
   } catch (err) {
     next(err);

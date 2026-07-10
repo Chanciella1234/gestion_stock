@@ -24,10 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
           <i class="fas fa-truck"></i> Commandes
         </a>
         <a href="/views/admin/alertes.html" class="sidebar-link" data-page="alertes">
-          <i class="fas fa-bell"></i> Alertes stock
+          <i class="fas fa-bell"></i> Alertes stock <span class="sidebar-badge" id="sidebarAlertBadge" style="display:none"></span>
         </a>
         <a href="/views/admin/clients.html" class="sidebar-link" data-page="clients">
           <i class="fas fa-users"></i> Clients
+        </a>
+        <a href="/views/admin/promotions.html" class="sidebar-link" data-page="promotions">
+          <i class="fas fa-tag"></i> Promotions
         </a>
         <div class="sidebar-divider"></div>
         <a href="/views/profil.html" class="sidebar-link">
@@ -51,4 +54,20 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('user');
     window.location.href = '/views/auth/login.html';
   });
+
+  const token = localStorage.getItem('token');
+  if (token) {
+    fetch(API + '/alertes', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const actives = data.data.filter(a => !a.resolu);
+          const badge = document.getElementById('sidebarAlertBadge');
+          if (badge && actives.length > 0) {
+            badge.textContent = actives.length;
+            badge.style.display = 'inline-flex';
+          }
+        }
+      }).catch(() => {});
+  }
 });

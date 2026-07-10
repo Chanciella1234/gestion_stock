@@ -40,6 +40,14 @@ const produitSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Categorie',
     required: [true, 'La catégorie est requise']
+  },
+  moyenne_notes: {
+    type: Number,
+    default: 0
+  },
+  nb_avis: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true,

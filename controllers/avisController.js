@@ -1,7 +1,18 @@
 const Avis = require('../models/Avis');
 const Commande = require('../models/Commande');
+const Produit = require('../models/Produit');
 const { success, error } = require('../utils/apiResponse');
 const { validerNote } = require('../utils/validators');
+
+async function recalculerNoteMoyenne(produitId) {
+  const resultat = await Avis.aggregate([
+    { $match: { produit: produitId, valide: true } },
+    { $group: { _id: null, moyenne: { $avg: '$note' }, nb: { $sum: 1 } } }
+  ]);
+  const moyenne = resultat.length > 0 ? Math.round(resultat[0].moyenne * 10) / 10 : 0;
+  const nbAvis = resultat.length > 0 ? resultat[0].nb : 0;
+  await Produit.findByIdAndUpdate(produitId, { moyenne_notes: moyenne, nb_avis: nbAvis });
+}
 
 exports.liste = async (req, res, next) => {
   try {
@@ -83,6 +94,8 @@ exports.valider = async (req, res, next) => {
       return error(res, 'Avis non trouvé.', 404);
     }
 
+    await recalculerNoteMoyenne(avis.produit);
+
     success(res, avis, 'Avis validé');
   } catch (err) {
     next(err);
@@ -95,6 +108,7 @@ exports.supprimer = async (req, res, next) => {
     if (!avis) {
       return error(res, 'Avis non trouvé.', 404);
     }
+    await recalculerNoteMoyenne(avis.produit);
     success(res, null, 'Avis supprimé');
   } catch (err) {
     next(err);

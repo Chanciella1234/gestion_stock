@@ -175,9 +175,10 @@
                 <td>${c.email}</td>
                 <td>${c.commandes} commande${c.commandes > 1 ? 's' : ''}</td>
                 <td>${date}</td>
-                <td><span class="badge badge-client">Client</span></td>
+                <td><span class="badge ${c.actif !== false ? 'badge-client' : 'badge-stock-out'}">${c.actif !== false ? 'Client' : 'Inactif'}</span></td>
                 <td class="actions-cell">
                   <button class="btn btn-secondary btn-sm" onclick="ouvrirDetailClient('${c._id}')"><i class="fas fa-eye"></i> Voir</button>
+                  <button class="btn btn-sm ${c.actif !== false ? 'btn-danger' : 'btn-success'}" onclick="toggleClientActif('${c._id}', ${c.actif !== false})"><i class="fas ${c.actif !== false ? 'fa-ban' : 'fa-check'}"></i></button>
                 </td>
               </tr>
             `;
@@ -246,6 +247,27 @@
       }
 
       ouvrirModal('modalClient');
+    }
+
+    async function toggleClientActif(clientId, estActif) {
+      const action = estActif ? 'désactiver' : 'activer';
+      if (!await confirmAsync('Voulez-vous ' + action + ' ce compte client ?')) return;
+      const token = getToken();
+      try {
+        const res = await fetch(API + '/auth/utilisateurs/' + clientId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ actif: !estActif })
+        });
+        const data = await res.json();
+        if (data.success) {
+          chargerClientsAdmin();
+        } else {
+          alert(data.message);
+        }
+      } catch (e) {
+        alert('Erreur lors de la modification.');
+      }
     }
   </script>
 </body>

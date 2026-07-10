@@ -59,6 +59,17 @@
           <p style="text-align:center;color:var(--text-muted);padding:20px">Aucune alerte active.</p>
         </div>
       </div>
+
+      <div style="margin-top:20px">
+        <div class="card-header" style="background:var(--bg-700);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;border-bottom:none">
+          <span class="card-title"><i class="fas fa-receipt"></i> 5 dernières commandes</span>
+        </div>
+        <div style="background:var(--bg-700);border:1px solid var(--border);border-radius:0 0 var(--radius-lg) var(--radius-lg);padding:0">
+          <div id="dernieresCommandes">
+            <p style="text-align:center;color:var(--text-muted);padding:20px">Chargement...</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -160,7 +171,28 @@
             }
 
             const ctx2 = document.getElementById('chartProduits');
-            if (ctx2 && s.stock.produitsFaibleStock && s.stock.produitsFaibleStock.length > 0) {
+            if (ctx2 && s.topProduits && s.topProduits.length > 0) {
+              new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                  labels: s.topProduits.map(p => p._id),
+                  datasets: [{
+                    label: 'Unités vendues',
+                    data: s.topProduits.map(p => p.totalVendu),
+                    backgroundColor: '#58A6FF',
+                    borderRadius: 6
+                  }]
+                },
+                options: {
+                  responsive: true,
+                  plugins: { legend: { display: false } },
+                  scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: '#8B949E' }, grid: { color: '#30363D' } },
+                    x: { ticks: { color: '#8B949E' }, grid: { display: false } }
+                  }
+                }
+              });
+            } else if (ctx2 && s.stock.produitsFaibleStock && s.stock.produitsFaibleStock.length > 0) {
               const alertes = s.stock.produitsFaibleStock.slice(0, 8);
               new Chart(ctx2, {
                 type: 'bar',
@@ -183,6 +215,20 @@
                 }
               });
             }
+          }
+
+          const cmdContainer = document.getElementById('dernieresCommandes');
+          if (s.dernieresCommandes && s.dernieresCommandes.length > 0) {
+            cmdContainer.innerHTML = '<table class="table" style="margin:0"><thead><tr><th>Réf</th><th>Client</th><th>Date</th><th>Total</th><th>Statut</th></tr></thead><tbody>' +
+              s.dernieresCommandes.map(c => {
+                const ref = c._id.toString().slice(-6).toUpperCase();
+                const d = new Date(c.createdAt).toLocaleDateString('fr-FR');
+                const badgeClass = c.statut === 'en_attente' ? 'badge-pending' : (c.statut === 'confirmee' ? 'badge-confirmed' : (c.statut === 'expediee' ? 'badge-shipped' : (c.statut === 'livree' ? 'badge-delivered' : 'badge-cancelled')));
+                return `<tr><td style="color:var(--blue-400);font-weight:500">#${ref}</td><td>${c.utilisateur ? c.utilisateur.nom : '—'}</td><td>${d}</td><td>${c.montant_total.toFixed(2)}FBU</td><td><span class="badge ${badgeClass}">${STATUT_LABELS[c.statut] || c.statut}</span></td></tr>`;
+              }).join('') +
+              '</tbody></table>';
+          } else {
+            cmdContainer.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px">Aucune commande.</p>';
           }
         }
       } catch (e) {}

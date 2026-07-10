@@ -30,6 +30,10 @@ const promotionSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  description: {
+    type: String,
+    trim: true
+  },
   produits_applicables: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Produit'

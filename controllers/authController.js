@@ -9,7 +9,7 @@ const { validerEmail, validerMotDePasse } = require('../utils/validators');
 
 exports.inscription = async (req, res, next) => {
   try {
-    const { nom, email, mot_de_passe } = req.body;
+    const { nom, email, mot_de_passe, telephone, adresse } = req.body;
 
     if (!nom || !email || !mot_de_passe) {
       return error(res, 'Tous les champs sont requis.', 400);
@@ -26,7 +26,7 @@ exports.inscription = async (req, res, next) => {
       return error(res, 'Cet email est déjà utilisé.', 400);
     }
 
-    const utilisateur = await Utilisateur.create({ nom, email, mot_de_passe });
+    const utilisateur = await Utilisateur.create({ nom, email, mot_de_passe, telephone, adresse });
     const token = genererToken({ id: utilisateur._id, role: utilisateur.role });
 
     success(res, {
@@ -113,6 +113,62 @@ exports.profil = async (req, res, next) => {
       role: utilisateur.role,
       date_inscription: utilisateur.date_inscription
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.modifierProfil = async (req, res, next) => {
+  try {
+    const { nom, email, telephone, adresse } = req.body;
+    const update = {};
+    if (nom) update.nom = nom;
+    if (email) {
+      if (!(await validerEmail(email))) {
+        return error(res, 'Email invalide.', 400);
+      }
+      const existe = await Utilisateur.findOne({ email, _id: { $ne: req.user._id } });
+      if (existe) {
+        return error(res, 'Cet email est déjà utilisé.', 400);
+      }
+      update.email = email;
+    }
+    if (telephone !== undefined) update.telephone = telephone;
+    if (adresse !== undefined) update.adresse = adresse;
+
+    const utilisateur = await Utilisateur.findByIdAndUpdate(
+      req.user._id,
+      update,
+      { new: true, runValidators: true }
+    );
+    success(res, {
+      _id: utilisateur._id,
+      nom: utilisateur.nom,
+      email: utilisateur.email,
+      role: utilisateur.role
+    }, 'Profil mis à jour');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.modifierUtilisateur = async (req, res, next) => {
+  try {
+    const { actif } = req.body;
+    const utilisateur = await Utilisateur.findByIdAndUpdate(
+      req.params.id,
+      { actif },
+      { new: true }
+    );
+    if (!utilisateur) {
+      return error(res, 'Utilisateur non trouvé.', 404);
+    }
+    success(res, {
+      _id: utilisateur._id,
+      nom: utilisateur.nom,
+      email: utilisateur.email,
+      actif: utilisateur.actif
+    }, actif ? 'Compte activé' : 'Compte désactivé');
   } catch (err) {
     next(err);
   }

@@ -98,6 +98,19 @@ exports.toutesLesCommandes = async (req, res, next) => {
   }
 };
 
+exports.detail = async (req, res, next) => {
+  try {
+    const commande = await Commande.findById(req.params.id)
+      .populate('utilisateur', 'nom email');
+    if (!commande) {
+      return error(res, 'Commande non trouvée.', 404);
+    }
+    success(res, commande);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.changerStatut = async (req, res, next) => {
   try {
     const { statut } = req.body;

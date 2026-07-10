@@ -90,6 +90,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/navbar.js"></script>
+  <script src="/js/notifications.js"></script>
   <script src="/js/produits.js"></script>
   <script>
     let noteSelectionnee = 0;
@@ -145,6 +146,9 @@
                   <button class="btn btn-primary" onclick="ajouterPanier('${p._id}')" ${p.stock === 0 ? 'disabled' : ''}>
                     <i class="fas fa-shopping-cart"></i> Ajouter au panier
                   </button>
+                  <button class="btn btn-success" onclick="acheterMaintenant('${p._id}')" ${p.stock === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-bolt"></i> Acheter maintenant
+                  </button>
                 </div>
               </div>
             </div>
@@ -185,6 +189,28 @@
           }
         } else {
           alert(data.message);
+        }
+      } catch (e) {
+        alert('Erreur lors de l\'ajout au panier.');
+      }
+    }
+
+    async function acheterMaintenant(produitId) {
+      const token = localStorage.getItem('token');
+      if (!token) { window.location.href = '/views/auth/login.html'; return; }
+
+      const quantite = parseInt(document.getElementById('qtyInput').value);
+      try {
+        const addRes = await fetch(API + '/panier/ajouter', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ produitId, quantite })
+        });
+        const addData = await addRes.json();
+        if (addData.success) {
+          window.location.href = '/views/panier/panier.html';
+        } else {
+          alert(addData.message);
         }
       } catch (e) {
         alert('Erreur lors de l\'ajout au panier.');

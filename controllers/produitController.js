@@ -1,10 +1,11 @@
 const Produit = require('../models/Produit');
 const Alerte = require('../models/Alerte');
+const Promotion = require('../models/Promotion');
 const { success, error, paginated } = require('../utils/apiResponse');
 
 exports.liste = async (req, res, next) => {
   try {
-    const { categorie, recherche, minPrix, maxPrix, page = 1, limit = 12 } = req.query;
+    const { categorie, recherche, minPrix, maxPrix, minStock, page = 1, limit = 12 } = req.query;
     const filter = {};
 
     if (categorie) filter.categorie = categorie;
@@ -14,6 +15,7 @@ exports.liste = async (req, res, next) => {
       if (minPrix) filter.prix.$gte = parseFloat(minPrix);
       if (maxPrix) filter.prix.$lte = parseFloat(maxPrix);
     }
+    if (minStock) filter.stock = { $gte: parseInt(minStock) };
 
     const total = await Produit.countDocuments(filter);
     const produits = await Produit.find(filter)
@@ -22,7 +24,27 @@ exports.liste = async (req, res, next) => {
       .skip((page - 1) * limit)
       .limit(parseInt(limit));
 
-    paginated(res, produits, total, parseInt(page), parseInt(limit));
+    const promotions = await Promotion.find({ actif: true });
+    const maintenant = new Date();
+    const produitsAvecPrix = produits.map(p => {
+      const obj = p.toObject();
+      for (const promo of promotions) {
+        if (!promo.estValide()) continue;
+        const applicable = (promo.produits_applicables && promo.produits_applicables.some(id => id.equals(p._id))) ||
+          (promo.categories_applicables && promo.categories_applicables.some(id => id.equals(p.categorie)));
+        if (applicable) {
+          if (promo.type === 'pourcentage') {
+            obj.prix_promo = Math.round(p.prix * (1 - promo.valeur / 100) * 100) / 100;
+          } else {
+            obj.prix_promo = Math.max(0, Math.round((p.prix - promo.valeur) * 100) / 100);
+          }
+          break;
+        }
+      }
+      return obj;
+    });
+
+    paginated(res, produitsAvecPrix, total, parseInt(page), parseInt(limit));
   } catch (err) {
     next(err);
   }
